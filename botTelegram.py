@@ -1,94 +1,98 @@
+#!/usr/bin/python
+
+import telebot
 import os
-import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters
 from pytube import YouTube
 
-def start(update, context):
+# Funzione per ottenere il token dal file token_bot.txt
+def get_token():
   """
-  Funzione per il comando /start.
-  - Presenta il bot e le sue funzionalità.
-  - Include un avviso sul copyright.
-  - Spiega come caricare il token da un file separato.
+  Questa funzione legge il token del bot dal file token_bot.txt.
   """
-  update.message.reply_text(
-      """
-      Benvenuto nel Bot di Download Video di YouTube!
+  with open('token_bot.txt', 'r') as file:
+    token = file.read().strip()
+  return token
 
-      Inviami il link di un video di YouTube e lo scaricherò per te in alta risoluzione.
-
-      **ATTENZIONE:**
-
-      * Scaricare contenuti protetti da copyright senza permesso è illegale. Usa questo bot solo per scopi didattici e assicurati di rispettare le normative sul copyright.
-      * Per utilizzare questo bot, devi creare un file chiamato "token_bot" nella stessa cartella del programma e inserire al suo interno il tuo token Telegram.
-
-      Per iniziare, invia il link di un video YouTube.
-      """,
-      parse_mode=telegram.ParseMode.HTML
-  )
-
-def download_video(update, context):
+# Funzione per ottenere il percorso del desktop dell'utente
+def get_user_desktop_dir():
   """
-  Funzione per il download di video.
-  - Scarica il video con la migliore risoluzione disponibile (progressiva).
-  - Gestisce gli errori e fornisce feedback all'utente.
-  - Salva il video nella cartella "downloads".
+  Questa funzione restituisce il percorso della cartella desktop dell'utente.
   """
-  try:
-    # Recupera il link del video dal messaggio
-    url = update.message.text
+  if os.name == 'nt':  # Windows
+    return os.path.join(os.path.expanduser('~'), 'Desktop')
+  else:  # Linux o macOS
+    return os.path.join(os.path.expanduser('~'), 'Desktop')
 
-    # Crea la cartella "downloads" se non esiste
-    if not os.path.exists("downloads"):
-      os.makedirs("downloads")
-
-    # Ottieni il video da YouTube
-    yt = YouTube(url)
-    video = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-
-    # Controlla se il video è disponibile
-    if video is None:
-      update.message.reply_text("Nessun video disponibile per il download.")
-      return
-
-    # Recupera il nome del file e la sua estensione
-    filename = video.title + "." + video.extension
-
-    # Salva il video nella cartella "downloads"
-    video.download(filename="downloads/" + filename)
-
-    # Informa l'utente del download completato
-    update.message.reply_text(f"Video scaricato con successo! Salvato in 'downloads/{filename}'.")
-
-  except Exception as e:
-    # Gestisce gli errori e fornisce feedback all'utente
-    error_message = f"Si è verificato un errore durante il download del video: {e}"
-    update.message.reply_text(error_message)
-
-def main():
+# Funzione per scaricare video da YouTube
+def download_youtube_video(url, filename=None):
   """
-  Funzione principale per l'avvio del bot.
-  - Carica il token del bot dal file "token_bot".
-  - Crea un Updater e un Dispatcher.
-  - Registra i gestori per i comandi e i messaggi.
-  - Avvia il bot e lo fa attendere i comandi degli utenti.
+  Questa funzione scarica un video di YouTube all'indirizzo url e lo salva nella cartella desktop dell'utente.
+  Restituisce il percorso completo del video scaricato e la sua risoluzione.
   """
+  yt = YouTube(url)
+  # Scegli la migliore qualità disponibile
+  video = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+  # Scarica il video
+  if not filename:
+    filename = f"{video.title} ({video.resolution}).mp4"  # Aggiungi l'estensione del file
+  user_desktop_dir = get_user_desktop_dir()
+  if not os.path.exists(user_desktop_dir):
+    os.makedirs(user_desktop_dir)
+  video_path = os.path.join(user_desktop_dir, filename)
+  video.download(video_path, filename=filename)
+  return video_path, video.resolution
 
-  # Carica il token del bot dal file "token_bot"
-  token_file = os.path.join(os.path.dirname(__file__), 'token_bot')
-  with open(token_file, 'r') as f:
-    TOKEN = f.read().strip()
+# Ottieni il token
+API_TOKEN = get_token()
 
-  # Crea un Updater e un Dispatcher
-  updater = Updater(TOKEN, use_context=True)
-  dp = updater.dispatcher
+# Ottieni il percorso della directory dello script
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
-  # Registra i gestori per i comandi e i messaggi
-  dp.add_handler(CommandHandler("start", start))
-  dp.add_handler(MessageHandler(Filters.text & ~Filters.command, download_video))
+# Crea la cartella di download se non esiste
+download_dir = os.path.join(script_dir, "SucchiaVideoBot_download")
+if not os.path.exists(download_dir):
+  os.makedirs(download_dir)
 
-  # Avvia il bot e lo fa attendere i comandi degli utenti
-  updater.start_polling()
-  updater.idle()
+# Crea l'istanza del bot
+bot = telebot.TeleBot(API_TOKEN)
 
-if __name__ == '__main__':
-  main()
+# Messaggio iniziale del bot
+@bot.message_handler(commands=['help', 'start'])
+def send_welcome(message):
+  """
+  Questa funzione gestisce i comandi /start e /help.
+  Il bot è progettato per aiutarti a scaricare video da YouTube.
+  Invia il link del video di YouTube e il bot lo scaricherà per te sulla tua scrivania!
+  """
+  bot.reply_to(message, """\
+Ciao, sono Il SucchiaVideoBot.
+Sono qui per aiutarti a scaricare video da YouTube.
+Inviami il link del video di YouTube e io lo scaricherò per te sulla tua scrivania!
+""")
+
+# Gestisci tutti gli altri messaggi di tipo 'text'
+@bot.message_handler(func=lambda message: True)
+def echo_message(message):
+  """
+  Questa funzione gestisce tutti i messaggi di testo normali.
+  """
+  # Se il messaggio contiene un link di YouTube
+  if 'youtube.com' in message.text:
+    # Esegui il download del video
+    try:
+      # Scarica il video
+      video_path, resolution = download_youtube_video(message.text)
+      # Invia il messaggio di conferma con la posizione del file e la risoluzione del video
+      bot.reply_to(message, f"Video scaricato con successo sulla tua scrivania!\nPosizione: {video_path}\nRisoluzione: {resolution}")
+    except Exception as e:
+      bot.reply_to(message, f"Si è verificato un errore durante il download del video: {str(e)}")
+  else:
+    bot.reply_to(message, """\
+Ciao, sono Il SucchiaVideoBot.
+Sono qui per aiutarti a scaricare video da YouTube.
+Inviami il link del video di YouTube e io lo scaricherò per te sulla tua scrivania!
+""")
+
+# Avvia il bot
+bot.infinity_polling()
+

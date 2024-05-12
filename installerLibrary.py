@@ -10,6 +10,9 @@ subprocess.run(["pip", "install", "telegram"])
 # Installa pytube
 subprocess.run(["pip", "install", "pytube"])
 
+# Installa telebot
+subprocess.run(["pip", "install", "telebot"])
+
 # Verifica che le librerie siano installate correttamente
 try:
   import telegram
