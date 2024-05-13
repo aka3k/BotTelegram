@@ -2,10 +2,7 @@ import os
 import subprocess
 
 # Installa python-telegram-bot
-subprocess.run(["pip", "install", "python-telegram-bot"])
-
-# Installa telegram (facoltativo, potrebbe già essere installato come dipendenza di python-telegram-bot)
-subprocess.run(["pip", "install", "telegram"])
+subprocess.run(["pip", "install", "requests"])
 
 # Installa pytube
 subprocess.run(["pip", "install", "pytube"])
