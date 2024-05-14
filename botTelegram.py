@@ -1,7 +1,9 @@
+#!/usr/bin/python
+
 import telebot
 from pytube import YouTube
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
+from io import BytesIO
 
 # Funzione per ottenere il token dal file token_bot.txt
 def get_token():
@@ -44,20 +46,16 @@ def echo_message(message):
         try:
             # Scarica il video
             yt = YouTube(message.text)
-            # Ottieni tutte le tracce video progressive
-            video_streams = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc()
-            
-            # Crea la tastiera inline con i pulsanti per le varie risoluzioni
-            keyboard = InlineKeyboardMarkup()
-            for stream in video_streams:
-                
-                button_text = f"{stream.resolution} - {int(stream.filesize / (1024 * 1024))} MB"
-                button_callback = f"download_{stream.resolution}_{message.text}"
-                keyboard.add(InlineKeyboardButton(text=button_text, callback_data=button_callback))
-            
-            # Invia il messaggio con la tastiera inline
-            bot.reply_to(message, "Scegli la risoluzione:", reply_markup=keyboard)
-            
+            stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+            video_url = stream.url
+            # Carica il video direttamente su Telegram
+            video_data = requests.get(video_url)
+            if video_data.status_code == 200:
+                bot.send_video(message.chat.id, video_data.content)
+                # Invia il messaggio di conferma con la risoluzione del video
+                bot.reply_to(message, f"Video inviato con successo!\nRisoluzione: {stream.resolution}")
+            else:
+                bot.reply_to(message, "Impossibile scaricare il video da YouTube al momento.")
         except Exception as e:
             bot.reply_to(message, f"Si è verificato un errore durante il caricamento del video: {str(e)}")
     else:
@@ -66,27 +64,6 @@ Ciao, sono Il SucchiaVideoBot.
 Sono qui per aiutarti a scaricare video da YouTube.
 Inviami il link del video di YouTube e io lo scaricherò per te!
 """)
-
-# Gestisci i callback dai pulsanti inline
-@bot.callback_query_handler(func=lambda call: True)
-def callback_handler(call):
-    """
-    Questa funzione gestisce i callback dai pulsanti inline.
-    """
-    if call.data.startswith("download_"):
-        resolution = call.data.split("_")[1]
-        try:
-            # Scarica il video con la risoluzione specificata
-            yt = YouTube(call.data.split("_")[2])
-            stream = yt.streams.filter(progressive=True, file_extension='mp4', resolution=resolution).first()
-            video_data = requests.get(stream.url)
-            if video_data.status_code == 200:
-                bot.send_video(call.message.chat.id, video_data.content)
-                bot.answer_callback_query(call.id, text=f"Video scaricato con successo in risoluzione {resolution}")
-            else:
-                bot.answer_callback_query(call.id, text="Impossibile scaricare il video al momento.")
-        except Exception as e:
-            bot.answer_callback_query(call.id, text=f"Si è verificato un errore durante il download del video: {str(e)}")
 
 # Avvia il bot
 bot.infinity_polling()
