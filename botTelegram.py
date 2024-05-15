@@ -3,7 +3,7 @@
 import telebot
 from pytube import YouTube
 import requests
-from io import BytesIO
+
 
 # Funzione per ottenere il token dal file token_bot.txt
 def get_token():

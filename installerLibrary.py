@@ -12,9 +12,9 @@ subprocess.run(["pip", "install", "telebot"])
 
 # Verifica che le librerie siano installate correttamente
 try:
-  import telegram
-  from telegram.ext import Updater
-  import pytube
+  import telebot
+  from pytube import YouTube
+  import requests
   print("Librerie installate correttamente!")
 except ImportError as e:
   print(f"Errore durante l'installazione delle librerie: {e}")
