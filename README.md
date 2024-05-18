@@ -15,15 +15,8 @@ Open the Telegram app and search for "IlSucchiaVideo".
 Send a message to the bot:
 
 Send a message containing a YouTube video link to the bot.
-Select the desired video resolution:
 
-The bot will reply with an inline keyboard containing buttons representing different video resolutions.
-Download the video:
-
-Tap the button corresponding to the desired resolution to download the video.
-Additional Notes:
-
-The bot will save the downloaded videos in the default download directory for your operating system.
+The bot will send the video in the chat, so you can download it rigth clickking aqnd selecting "download".
 
 If you encounter any issues, ensure that you have installed the required libraries correctly and that you are running the bot scripts as an administrator.
 
